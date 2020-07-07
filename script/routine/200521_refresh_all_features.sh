@@ -45,8 +45,10 @@ echo ">>Reorgnize era5..."
 python 200517_convert_era5.py
 
 echo ">>Combine era5 and dyn..."
-python 200520_extract_era5_combine_dyn_predict.py
+python 200520_extract_era5_combine_dyn_predict.py &
 echo ">>Combine giss and dyn..."
-python 200520_extract_giss_combine_dyn_predict.py
+python 200520_extract_giss_combine_dyn_predict.py &
 echo ">>Combine prec/l and dyn..."
-python 200523_extract_prec_combine_dyn_predict.py
+python 200626_extract_prec_combine_dyn_predict_4process.py &
+
+wait

@@ -7,8 +7,10 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from copy import copy
 from cartopy.mpl.gridliner import LATITUDE_FORMATTER, LONGITUDE_FORMATTER
+import cartopy.io.shapereader as shpreader
 import shapely.geometry as sgeom
 import datetime
+import json
 
 # Constants
 BIGFONT=18
@@ -94,57 +96,59 @@ def main():
     # File paths 
     cn_map_file='../../data/CN-border-La.dat'
     sta_meta_file='../../data/station/SURF_CLI_CHN_PRE_MUT_HOMO_STATION.xls'
+    pr_base_file='../../json_base/pr_mon_clim_mmperday.json'
     fcst_dir='../../result/'
     out_dir='../../fig/'
 
+    province_shp_file='../../lib/shp/cnmap/cnhimap.dbf'
+    county_shp_file='../../lib/shp/cnmap/county_2004.dbf'
+
+    south_china_province=['广东', '广西', '海南']
+    
+    with open(pr_base_file) as f:
+        pr_dic=json.load(f)
+    
 
     # Get in files
     timenow=datetime.datetime.now()
     timenxtmon=timenow+datetime.timedelta(days=28)
-    fcst_data='fcst.I'+timenow.strftime('%y%m%d')+'.P'+timenxtmon.strftime('%y%m')+'.t2m.csv'
-    fcst_fig='fcst.I'+timenow.strftime('%y%m%d')+'.P'+timenxtmon.strftime('%y%m')+'.t2m.png'
+    fcst_data='fcst.I'+timenow.strftime('%y%m%d')+'.P'+timenxtmon.strftime('%y%m')+'.prec.csv'
+    #fcst_data='fcst.I200626.P2007.prec.csv'
+    fcst_fig='fcst.I'+timenow.strftime('%y%m%d')+'.P'+timenxtmon.strftime('%y%m')+'.prec.png'
     fcst_df=pd.read_csv(fcst_dir+fcst_data, index_col=0)
     
+    fcst_mon=int(timenxtmon.strftime('%m'))-1
+
     # Sta meta
     sta_df=get_station_df(sta_meta_file)
 
-    # Set Chinese Characters
-#    plt.rcParams['font.sans-serif']=['SimHei'] 
-
-    # Load the border data, CN-border-La.dat is downloaded from
-    # https://gmt-china.org/data/CN-border-La.dat
-    with open(cn_map_file) as src:
-        context = src.read()
-        blocks = [cnt for cnt in context.split('>') if len(cnt) > 0]
-        borders = [np.fromstring(block, dtype=float, sep=' ') for block in blocks]
     # Set figure size
-    proj = ccrs.LambertConformal(central_longitude=105, central_latitude=90,
-                                 false_easting=400000, false_northing=400000)#,standard_parallels=(46, 49))
+    proj = ccrs.Mercator(central_longitude=115., min_latitude=-80.0, max_latitude=84.0, globe=None, 
+            latitude_true_scale=21.0, false_easting=0.0, false_northing=0.0, scale_factor=None)
     fig = plt.figure(figsize=[10, 8],frameon=True)
     # Set projection and plot the main figure
     ax = fig.add_axes([0.08, 0.05, 0.8, 0.94], projection=proj)
     # Set figure extent
-    ax.set_extent([80, 128, 18, 55],crs=ccrs.PlateCarree())
+    ax.set_extent([104, 118, 16, 27],crs=ccrs.PlateCarree())
+    
+    # read shp files
+    province_shp=shpreader.Reader(province_shp_file).geometries()
+    county_shp = shpreader.Reader(county_shp_file).geometries()
+    
+    # plot shp boundaries
+    ax.add_geometries(county_shp, ccrs.PlateCarree(),facecolor='none', edgecolor='gray',linewidth=0.5, zorder = 0)
+    ax.add_geometries(province_shp, ccrs.PlateCarree(),facecolor='none', edgecolor='black',linewidth=1., zorder = 1)
 
-    # Plot country and province border lines
-    for line in borders:
-        ax.plot(line[0::2], line[1::2], '-', lw=0.5, color='k',
-                transform=ccrs.Geodetic())
     # Add ocean, land, rivers and lakes
     ax.add_feature(cfeature.OCEAN.with_scale('50m'))
     ax.add_feature(cfeature.LAND.with_scale('50m'))
-    #ax.add_feature(cfeature.RIVERS.with_scale('50m'))
-    #ax.add_feature(cfeature.LAKES.with_scale('50m'))
-
-
-
     # *must* call draw in order to get the axis boundary used to add ticks:
     fig.canvas.draw()
     # Define gridline locations and draw the lines using cartopy's built-in gridliner:
     # xticks = np.arange(80,130,10)
     # yticks = np.arange(15,55,5)
-    xticks = [55, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155, 165]
-    yticks = [0 , 5 , 10, 15, 20, 25 , 30 , 35 , 40 , 45 , 50 , 55 , 60 , 65]
+    xticks = range(104, 118, 4)
+    yticks = range(16, 27, 2) 
     #ax.gridlines(xlocs=xticks, ylocs=yticks,zorder=1,linestyle='--',lw=0.5,color='gray')
 
     # Label the end-points of the gridlines using the custom tick makers:
@@ -158,23 +162,26 @@ def main():
     
     # add station points
     for idx, row in sta_df.iterrows():
+        
+        if not(row['省份'] in south_china_province):
+            continue
         lat_sta=conv_deg(row['纬度(度分)'][0:-1])
         lon_sta=conv_deg(row['经度(度分)'][0:-1])
-        var=fcst_df.loc[int(row['区站号']),:]['final']  
+        var=fcst_df.loc[int(row['区站号']),:]['final']/pr_dic[str(int(row['区站号']))][fcst_mon]
         # 6-level PS forecast
-        if var>2.0:
+        if var>0.5:
             lat_dic['p2'].append(lat_sta)    
             lon_dic['p2'].append(lon_sta)    
-        elif var>1.0:
+        elif var>0.2:
             lat_dic['p1'].append(lat_sta)    
             lon_dic['p1'].append(lon_sta)    
         elif var>0.0:
             lat_dic['p0'].append(lat_sta)    
             lon_dic['p0'].append(lon_sta)    
-        elif var>-1.0:
+        elif var>-0.2:
             lat_dic['p-0'].append(lat_sta)    
             lon_dic['p-0'].append(lon_sta)    
-        elif var>-2.0:
+        elif var>-0.5:
             lat_dic['p-1'].append(lat_sta)    
             lon_dic['p-1'].append(lon_sta)    
         else:
@@ -182,47 +189,32 @@ def main():
             lon_dic['p-2'].append(lon_sta)    
 
     # ++
-    ax.scatter( lon_dic['p2'], lat_dic['p2'],marker='.', color='darkred', 
-            s=40,zorder=0, transform=ccrs.Geodetic(), label='>2.0℃ Sta_Num:'+str(len(lon_dic['p2'])))
+    ax.scatter( lon_dic['p2'], lat_dic['p2'],marker='.', color='darkblue', 
+            s=100,zorder=99, transform=ccrs.Geodetic(), label='>50% Sta_Num:'+str(len(lon_dic['p2'])))
     # +
-    ax.scatter( lon_dic['p1'], lat_dic['p1'],marker='.', color='red', 
-            s=15,zorder=1, transform=ccrs.Geodetic(), label='1.0~2.0℃ Sta_Num:'+str(len(lon_dic['p1'])))
+    ax.scatter( lon_dic['p1'], lat_dic['p1'],marker='.', color='blue', 
+            s=50,zorder=10, transform=ccrs.Geodetic(), label='20%~50% Sta_Num:'+str(len(lon_dic['p1'])))
     # +o
-    ax.scatter( lon_dic['p0'], lat_dic['p0'],marker='.', color='gold', 
-            s=8,zorder=2, transform=ccrs.Geodetic(), label='0.0~1.0℃ Sta_Num:'+str(len(lon_dic['p0'])))
+    ax.scatter( lon_dic['p0'], lat_dic['p0'],marker='.', color='dodgerblue', 
+            s=30,zorder=2, transform=ccrs.Geodetic(), label='0~20% Sta_Num:'+str(len(lon_dic['p0'])))
     # -o
-    ax.scatter( lon_dic['p-0'], lat_dic['p-0'],marker='.', color='skyblue', 
-            s=10,zorder=2, transform=ccrs.Geodetic(), label='-1.0~0.0℃ Sta_Num:'+str(len(lon_dic['p-0'])))
+    ax.scatter( lon_dic['p-0'], lat_dic['p-0'],marker='.', color='sandybrown', 
+            s=40,zorder=2, transform=ccrs.Geodetic(), label='-20%~0 Sta_Num:'+str(len(lon_dic['p-0'])))
     # -
-    ax.scatter( lon_dic['p-1'], lat_dic['p-1'],marker='.', color='blue', 
-            s=20,zorder=1, transform=ccrs.Geodetic(), label='-2.0~-1.0℃ Sta_Num:'+str(len(lon_dic['p-1'])))
+    ax.scatter( lon_dic['p-1'], lat_dic['p-1'],marker='.', color='sienna', 
+            s=60,zorder=10, transform=ccrs.Geodetic(), label='-50%~-20% Sta_Num:'+str(len(lon_dic['p-1'])))
     # --
-    ax.scatter( lon_dic['p-2'], lat_dic['p-2'],marker='.', color='darkblue', 
-            s=50,zorder=0, transform=ccrs.Geodetic(), label='<-2.0℃ Sta_Num:'+str(len(lon_dic['p-2'])))
+    ax.scatter( lon_dic['p-2'], lat_dic['p-2'],marker='.', color='darkred', 
+            s=120,zorder=99, transform=ccrs.Geodetic(), label='<-50% Sta_Num:'+str(len(lon_dic['p-2'])))
 
 
     plt.legend(loc='best', fontsize=SMFONT)
     
-    plt.title('LASSO-Based Monthly Temperature Anomaly Forecast (Target: '+timenxtmon.strftime('%Y-%m')+', Init Date:'+timenow.strftime('%Y-%m-%d')+')')
+    plt.title('LASSO-Based Monthly Precipitation Anomaly Forecast (Target: '+timenxtmon.strftime('%Y-%m')+', Init Date:'+timenow.strftime('%Y-%m-%d')+')')
 
-    #Plot South China Sea as a subfigure
-    sub_ax = fig.add_axes([0.754, 0.107, 0.14, 0.155],
-                          projection=ccrs.LambertConformal(central_latitude=90,
-                                                           central_longitude=115))
-
-    # Add ocean, land, rivers and lakes
-    sub_ax.add_feature(cfeature.OCEAN.with_scale('50m'))
-    sub_ax.add_feature(cfeature.LAND.with_scale('50m'))
-
-    # Plot border lines
-    for line in borders:
-        sub_ax.plot(line[0::2], line[1::2], '-', lw=0.5, color='k',
-                    transform=ccrs.Geodetic())
-    # Set figure extent
-    sub_ax.set_extent([105, 125, 0, 25],crs=ccrs.PlateCarree())
-    # Show figure
+# Show figure
     plt.savefig("../../fig/"+fcst_fig, dpi=200, bbox_inches='tight')
-    plt.savefig("../../fig/realtime.t2m.png", dpi=200, bbox_inches='tight')
+    plt.savefig("../../fig/realtime.prec.south_china.png", dpi=200, bbox_inches='tight')
 #    plt.show()
 
 

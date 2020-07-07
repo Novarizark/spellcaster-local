@@ -13,7 +13,7 @@ import datetime
 prec_arch_fn='/disk/hq247/yhuangci/lzhenn/workspace/spellcaster-local/data/all_feature/precip.land.mon.mean.1x1.nc'
 
 #s2s forecast file
-s2s_fcst_file='/disk/hq247/yhuangci/lzhenn/workspace/spellcaster-local/data/realtime/CFSv2.Prec.20200521.202006.nc'
+s2s_fcst_file='/disk/hq247/yhuangci/lzhenn/workspace/spellcaster-local/data/realtime/CFSv2.Prec.nc'
 
 # meta file
 sta_meta_file='/disk/hq247/yhuangci/lzhenn/data/station/SURF_CLI_CHN_PRE_MUT_HOMO_STATION.xls'

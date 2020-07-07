@@ -92,7 +92,7 @@ def main():
     model_out_dir='../../data/model_archive/'
     
     # Result Dict File
-    result_in_file='../../json_base/whole_china_t2m_result.json'
+    result_in_file='../../json_base/whole_china_t2m_full_XY_result.json'
    
     # Prediction Output
     out_dir='../../result/'

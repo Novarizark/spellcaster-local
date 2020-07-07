@@ -91,7 +91,7 @@ def main():
     model_out_dir='../../data/model_archive/'
     
     # Result Dict File
-    result_in_file='../../json_base/whole_china_prec_result.json'
+    result_in_file='../../json_base/whole_china_prec_full_XY_result.json'
    
     # Prediction Output
     out_dir='../../result/'
@@ -168,7 +168,7 @@ def main():
             (n_samples, n_features)=X.shape
 
                    
-            lasso_model = joblib.load( model_out_dir+sta_num+'.pr.model')
+            lasso_model = joblib.load( model_out_dir+sta_num+'.pr.fullXY.model')
 
             # make prediction
             predict_Y=lasso_model.predict(X)

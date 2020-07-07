@@ -92,7 +92,7 @@ def main():
     model_out_dir='../../data/model_archive/'
     
     # Result Dict File
-    result_in_file='../../json_base/whole_china_t2m_result.json'
+    result_in_file='../../json_base/whole_china_t2m_full_XY_result.json'
    
     # Prediction Output
     out_dir='../../result/'
@@ -177,7 +177,7 @@ def main():
             lst_giss_lag, col_giss_lag=construct_lag_array1d(df_giss, lag_step, 'giss') 
             lst_giss_lag=np.squeeze(lst_giss_lag)
             
-            X = np.concatenate((X_features, lst_era5_lag, lst_giss_lag),axis=1) # with 74 cir index
+            X = np.concatenate((X_features, lst_era5_lag, lst_giss_lag),axis=1) 
             col_list_X.extend(col_era5_lag)
             col_list_X.extend(col_giss_lag)
             (n_samples, n_features)=X.shape

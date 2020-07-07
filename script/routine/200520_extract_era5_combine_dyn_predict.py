@@ -10,7 +10,7 @@ import datetime
 
 
 #era5_t2m_arch_fn='../../data/era5/test.nc'
-era5_t2m_arch_fn='../../data/era5/T2m.mon.REA5.1979-present.update.nc'
+era5_t2m_arch_fn='../../data/era5/T2m.mon.REA5.1979-present.nc'
 era_clim_file='../../data/era5/T2m.clim.REA5.1981-2010.nc'
 
 #s2s forecast file
